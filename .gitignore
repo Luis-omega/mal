@@ -11,6 +11,7 @@
 .ivy2
 .sbt
 .npm
+.env
 .node-gyp
 package-lock.json
 */experiments
