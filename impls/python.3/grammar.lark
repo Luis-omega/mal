@@ -1,0 +1,68 @@
+
+SPACES : /\s|,/
+
+%ignore SPACES
+
+COMMENT : /;.*/
+
+%ignore COMMENT
+
+LBRACE : "{"
+RBRACE : "}"
+LPAREN : "("
+RPAREN : ")"
+LBRACKET : "["
+RBRACKET : "]"
+
+SPECIAL: "~@"
+SINGLE_QUOTE : "'"
+BACKTICK : "`"
+TILDE : "~"
+HAT: "^"
+AT : "@"
+
+
+STRING : "\"" ("\\\""| /[^\]/)*  "\""
+
+UNBALANCED_STRING: /"((\")|[^\"])*$/
+
+
+
+NUMBER: /-?[1-9][0-9]*|0+/
+
+TRUE : "True"
+FALSE : "False"
+NIL: "nil"
+
+SYMBOL.-1 : /[^\s\[\]{}('"`,;)]+/
+
+
+atom : TRUE | FALSE | NIL | NUMBER | SYMBOL | STRING | UNBALANCED_STRING
+    | quote
+    | quasiquote
+    | unquote
+    | splice_unquote
+    | deref
+
+quote : SINGLE_QUOTE expression
+
+quasiquote : BACKTICK expression
+
+unquote : TILDE expression
+
+splice_unquote : SPECIAL expression
+
+deref : AT expression
+
+list_items : expression+
+
+list : LPAREN list_items RPAREN -> list1
+    | LPAREN RPAREN -> list2
+
+vector : LBRACKET list_items RBRACKET-> vector1
+    | LBRACKET RBRACKET -> vector2
+
+expression : atom
+    |list 
+    | vector
+
