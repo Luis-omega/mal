@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from parser import TransformLisP, grammar
-from typing import Mapping
+from typing import MutableMapping
 
+from env import Environment, SymbolNotFound
 from lark import Lark, UnexpectedInput, UnexpectedToken
 from lark.exceptions import VisitError
-from mal_types import (Environment, ExpressionT, FalseV, HashMap, Keyword,
-                       List, MalException, Nil, NonFunctionFormAtFirstListITem,
+from mal_types import (ExpressionT, FalseV, HashMap, Keyword, List,
+                       MalException, Nil, NonFunctionFormAtFirstListITem,
                        Number, Pretty, PrimitiveFunction, String, Symbol,
-                       SymbolNotFound, TrueV, UnbalancedString, Vector,
-                       Visitor)
+                       TrueV, UnbalancedString, Vector, Visitor)
 
 
 def read(
@@ -35,7 +35,7 @@ class Evaluator(Visitor[ExpressionT]):
     env: Environment
 
     def visit_symbol(self, s: Symbol) -> ExpressionT:
-        result = self.env.value.get(s.symbol, None)
+        result = self.env.data.get(s.symbol, None)
         if result is None:
             raise SymbolNotFound(s, self.env)
         return result
@@ -133,14 +133,15 @@ def main() -> None:
         start=["expression"],
     )
     transformer = TransformLisP()
-    default_env_dict: Mapping[str, PrimitiveFunction] = {
+    default_env_dict: MutableMapping[str, ExpressionT] = {
         "+": PrimitiveFunction(lambda t: Number(t[0].value + t[1].value)),
         "-": PrimitiveFunction(lambda t: Number(t[0].value - t[1].value)),
         "/": PrimitiveFunction(lambda t: Number(t[0].value / t[1].value)),
         "*": PrimitiveFunction(lambda t: Number(t[0].value * t[1].value)),
         "%": PrimitiveFunction(lambda t: Number(t[0].value % t[1].value)),
     }
-    default_env: Environment = Environment(default_env_dict)
+    default_env: Environment = Environment(None)
+    default_env.data = default_env_dict
     default_evaluator: Evaluator = Evaluator(default_env)
     while True:
         try:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Mapping, TypeVar, Union
+from typing import Any, Callable, Generic, TypeVar, Union
 
 T = TypeVar("T")
 
@@ -34,17 +34,6 @@ class NonFunctionFormAtFirstListITem(MalException):
     exp: ExpressionT
     f: Any
     arguments: list[ExpressionT]
-
-
-@dataclass
-class SymbolNotFound(MalException):
-    symbol: Symbol
-    hash_map: Environment
-
-
-@dataclass
-class Environment:
-    value: Mapping[str, ExpressionT]
 
 
 class Visitor(Generic[T]):
