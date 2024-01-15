@@ -2,7 +2,7 @@ from typing import Union
 
 from lark import Token, Transformer, v_args
 from mal_types import (ExpressionT, FalseV, HashMap, Keyword, List, Nil,
-                       Number, String, Symbol, TrueV, Vector)
+                       Number, String, Symbol, TrueV, UnbalancedString, Vector)
 
 grammar = """
 
