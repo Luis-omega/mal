@@ -7,10 +7,10 @@ from typing import MutableMapping
 from env import Environment, SymbolNotFound
 from lark import Lark, UnexpectedInput, UnexpectedToken
 from lark.exceptions import VisitError
-from mal_types import (ExpressionT, FalseV, HashMap, Keyword, List,
+from mal_types import (ExpressionT, FalseV, Function, HashMap, Keyword, List,
                        MalException, Nil, NonFunctionFormAtFirstListITem,
-                       Number, Pretty, PrimitiveFunction, String, Symbol,
-                       TrueV, UnbalancedString, Vector, Visitor)
+                       Number, Pretty, String, Symbol, TrueV, UnbalancedString,
+                       Vector, Visitor)
 
 
 def read(
@@ -64,7 +64,7 @@ class Evaluator(Visitor[ExpressionT]):
             f = evaluated[0]
             arguments = evaluated[1:]
             match f:
-                case PrimitiveFunction(g):
+                case Function(g):
                     return g(arguments)
                 case _:
                     raise NonFunctionFormAtFirstListITem(ls, f, arguments)
@@ -83,7 +83,7 @@ class Evaluator(Visitor[ExpressionT]):
         else:
             return h
 
-    def visit_primitive_function(self, f: PrimitiveFunction) -> ExpressionT:
+    def visit_primitive_function(self, f: Function) -> ExpressionT:
         return f
 
 
@@ -134,11 +134,11 @@ def main() -> None:
     )
     transformer = TransformLisP()
     default_env_dict: MutableMapping[str, ExpressionT] = {
-        "+": PrimitiveFunction(lambda t: Number(t[0].value + t[1].value)),
-        "-": PrimitiveFunction(lambda t: Number(t[0].value - t[1].value)),
-        "/": PrimitiveFunction(lambda t: Number(t[0].value / t[1].value)),
-        "*": PrimitiveFunction(lambda t: Number(t[0].value * t[1].value)),
-        "%": PrimitiveFunction(lambda t: Number(t[0].value % t[1].value)),
+        "+": Function(lambda t: Number(t[0].value + t[1].value)),
+        "-": Function(lambda t: Number(t[0].value - t[1].value)),
+        "/": Function(lambda t: Number(t[0].value / t[1].value)),
+        "*": Function(lambda t: Number(t[0].value * t[1].value)),
+        "%": Function(lambda t: Number(t[0].value % t[1].value)),
     }
     default_env: Environment = Environment(None)
     default_env.data = default_env_dict

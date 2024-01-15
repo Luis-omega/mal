@@ -17,7 +17,7 @@ ExpressionT = Union[
     "Vector",
     "Keyword",
     "HashMap",
-    "PrimitiveFunction",
+    "Function",
 ]
 
 
@@ -78,7 +78,7 @@ class Visitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_primitive_function(self, v: PrimitiveFunction) -> T:
+    def visit_primitive_function(self, v: Function) -> T:
         pass
 
 
@@ -169,11 +169,11 @@ class HashMap(Expression):
 
 
 @dataclass
-class PrimitiveFunction(Expression):
+class Function(Expression):
     value: Callable[[list[Any]], Any]
 
     def visit(self, visitor: Visitor[T]) -> T:
-        return visitor.visit_primitive_function(self)
+        return visitor.visit_function(self)
 
 
 class Pretty(Visitor[str]):
@@ -210,5 +210,5 @@ class Pretty(Visitor[str]):
         acc = [f"{k.visit(self)} {v.visit(self)}" for k, v in h.value.items()]
         return "{" + " ".join(acc) + "}"
 
-    def visit_primitive_function(self, fun: PrimitiveFunction) -> str:
+    def visit_primitive_function(self, fun: Function) -> str:
         return repr(fun)
