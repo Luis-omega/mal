@@ -32,8 +32,17 @@ class UnbalancedString(MalException):
 @dataclass
 class NonFunctionFormAtFirstListITem(MalException):
     exp: ExpressionT
-    f: Any
+    f: ExpressionT
     arguments: list[ExpressionT]
+
+    def __str__(self):
+        p = Pretty()
+        return (
+            "Error! expected a function or form as first argument, got:\n"
+            + self.f.visit(p)
+            + "\nIn let expression: \n"
+            + self.arguments.visit(p)
+        )
 
 
 class Visitor(Generic[T]):
@@ -78,7 +87,7 @@ class Visitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_primitive_function(self, v: Function) -> T:
+    def visit_function(self, v: Function) -> T:
         pass
 
 
@@ -120,17 +129,26 @@ class TrueV(Expression):
     def visit(self, visitor: Visitor[T]) -> T:
         return visitor.visit_true(self)
 
+    def __bool__(self):
+        return True
+
 
 @dataclass
 class FalseV(Expression):
     def visit(self, visitor: Visitor[T]) -> T:
         return visitor.visit_false(self)
 
+    def __bool__(self):
+        return False
+
 
 @dataclass
 class Nil(Expression):
     def visit(self, visitor: Visitor[T]) -> T:
         return visitor.visit_nil(self)
+
+    def __bool__(self):
+        return False
 
 
 @dataclass
@@ -170,7 +188,7 @@ class HashMap(Expression):
 
 @dataclass
 class Function(Expression):
-    value: Callable[[list[Any]], Any]
+    value: Callable[[list[ExpressionT]], ExpressionT]
 
     def visit(self, visitor: Visitor[T]) -> T:
         return visitor.visit_function(self)
@@ -187,10 +205,10 @@ class Pretty(Visitor[str]):
         return str(n.value)
 
     def visit_true(self, t: TrueV) -> str:
-        return "True"
+        return "true"
 
     def visit_false(self, f: FalseV) -> str:
-        return "False"
+        return "false"
 
     def visit_nil(self, n: Nil) -> str:
         return "nil"
@@ -210,5 +228,5 @@ class Pretty(Visitor[str]):
         acc = [f"{k.visit(self)} {v.visit(self)}" for k, v in h.value.items()]
         return "{" + " ".join(acc) + "}"
 
-    def visit_primitive_function(self, fun: Function) -> str:
+    def visit_function(self, fun: Function) -> str:
         return repr(fun)

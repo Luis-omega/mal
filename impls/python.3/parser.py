@@ -38,8 +38,8 @@ UNBALANCED_STRING: STRING_COMMON /$/
 
 NUMBER: /-?[1-9][0-9]*|0+/
 
-TRUE : "True"
-FALSE : "False"
+TRUE : "true"
+FALSE : "false"
 NIL: "nil"
 
 SYMBOL.-1 : /[^\s\[\]{}('"`,;)]+/
