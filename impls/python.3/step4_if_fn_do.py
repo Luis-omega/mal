@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import readline
 from dataclasses import dataclass
 from parser import TransformLisP, grammar
 

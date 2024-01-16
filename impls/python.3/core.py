@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import MutableMapping
 
 from mal_types import (ExpressionT, FalseV, Function, List, MalException, Nil,
-                       Number, Pretty, TrueV, Vector)
+                       Number, Pretty, String, TrueV, Vector)
 
 
 @dataclass
@@ -46,29 +46,27 @@ def bool_to_mal_bool(x: bool):
     return TrueV() if x else FalseV()
 
 
-def prn(args: list[ExpressionT]) -> ExpressionT:
-    assert_argument_number(args, 1, "prn")
-    p = Pretty()
-    print(args[0].visit(p))
+def prn(args: list[ExpressionT]) -> Nil:
+    print(pr_str(args).value)
     return Nil()
 
 
-def _list(args: list[ExpressionT]) -> ExpressionT:
+def _list(args: list[ExpressionT]) -> List:
     return List(args)
 
 
-def is_list(args: list[ExpressionT]) -> ExpressionT:
+def is_list(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 1, "list?")
     return bool_to_mal_bool(isinstance(args[0], List))
 
 
-def is_empty(args: list[ExpressionT]) -> ExpressionT:
+def is_empty(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 1, "empty?")
     ls = assert_sequence(args[0])
     return bool_to_mal_bool(not bool(ls.value))
 
 
-def count(args: list[ExpressionT]) -> ExpressionT:
+def count(args: list[ExpressionT]) -> Number:
     assert_argument_number(args, 1, "count")
     if isinstance(args[0], Nil):
         return Number(0)
@@ -76,8 +74,18 @@ def count(args: list[ExpressionT]) -> ExpressionT:
     return Number(len(ls.value))
 
 
-def eq(args: list[ExpressionT]) -> ExpressionT:
+def eq(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 2, "(=)")
+    x = args[0]
+    y = args[1]
+    # TODO: WHY??? WHY???Y WHY have vectors if
+    # mal doesn't make a distintion between vectors and list?
+    if isinstance(x, List) or isinstance(x, Vector):
+        if isinstance(y, List) or isinstance(y, Vector):
+            return bool_to_mal_bool(
+                len(x.value) == len(y.value)
+                and all(eq([x1, y1]) for x1, y1 in zip(x.value, y.value))
+            )
     if not isinstance(args[0], type(args[1])):
         return FalseV()
     if args[0] == args[1]:
@@ -85,32 +93,49 @@ def eq(args: list[ExpressionT]) -> ExpressionT:
     return FalseV()
 
 
-def le(args: list[ExpressionT]) -> ExpressionT:
+def le(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 2, "(<)")
     a = assert_number(args[0])
     b = assert_number(args[1])
     return bool_to_mal_bool(a.value < b.value)
 
 
-def leq(args: list[ExpressionT]) -> ExpressionT:
+def leq(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 2, "(<=)")
     a = assert_number(args[0])
     b = assert_number(args[1])
     return bool_to_mal_bool(a.value <= b.value)
 
 
-def gt(args: list[ExpressionT]) -> ExpressionT:
+def gt(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 2, "(>)")
     a = assert_number(args[0])
     b = assert_number(args[1])
     return bool_to_mal_bool(a.value > b.value)
 
 
-def geq(args: list[ExpressionT]) -> ExpressionT:
+def geq(args: list[ExpressionT]) -> TrueV | FalseV:
     assert_argument_number(args, 2, "(>=)")
     a = assert_number(args[0])
     b = assert_number(args[1])
     return bool_to_mal_bool(a.value >= b.value)
+
+
+def pr_str(args: list[ExpressionT]) -> String:
+    p = Pretty()
+    return String(" ".join(x.visit(p) for x in args))
+
+
+def mal_str(args: list[ExpressionT]) -> String:
+    p = Pretty(False)
+    return String("".join(x.visit(p) for x in args))
+
+
+def println(args: list[ExpressionT]) -> Nil:
+    p = Pretty(False)
+    result = " ".join(x.visit(p) for x in args)
+    print(result)
+    return Nil()
 
 
 def get_namespace() -> MutableMapping[str, ExpressionT]:
@@ -130,4 +155,7 @@ def get_namespace() -> MutableMapping[str, ExpressionT]:
         "<=": Function(leq),
         ">": Function(gt),
         ">=": Function(geq),
+        "pr-str": Function(pr_str),
+        "str": Function(mal_str),
+        "println": Function(println),
     }

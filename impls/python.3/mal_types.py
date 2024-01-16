@@ -41,7 +41,7 @@ class NonFunctionFormAtFirstListITem(MalException):
             "Error! expected a function or form as first argument, got:\n"
             + self.f.visit(p)
             + "\nIn let expression: \n"
-            + self.arguments.visit(p)
+            + List(self.arguments).visit(p)
         )
 
 
@@ -195,6 +195,11 @@ class Function(Expression):
 
 
 class Pretty(Visitor[str]):
+    print_readably: bool
+
+    def __init__(self, print_readably: bool = True):
+        self.print_readably = print_readably
+
     def visit_symbol(self, s: Symbol) -> str:
         return s.symbol
 
@@ -214,7 +219,12 @@ class Pretty(Visitor[str]):
         return "nil"
 
     def visit_string(self, st: String) -> str:
-        return f'"{st.value}"'
+        if not self.print_readably:
+            return f"{st.value}"
+        after_backslash = st.value.replace("\\", "\\\\")
+        after_breaks = after_backslash.replace("\n", "\\n")
+        final = after_breaks.replace('"', '\\"')
+        return f'"{final}"'
 
     def visit_list(self, ls: List) -> str:
         acc = [e.visit(self) for e in ls.value]

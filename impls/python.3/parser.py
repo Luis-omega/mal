@@ -1,8 +1,10 @@
+from dataclasses import dataclass
 from typing import Union
 
 from lark import Token, Transformer, v_args
-from mal_types import (ExpressionT, FalseV, HashMap, Keyword, List, Nil,
-                       Number, String, Symbol, TrueV, UnbalancedString, Vector)
+from mal_types import (ExpressionT, FalseV, HashMap, Keyword, List,
+                       MalException, Nil, Number, String, Symbol, TrueV,
+                       UnbalancedString, Vector)
 
 grammar = """
 
@@ -90,6 +92,12 @@ expression : atom
 """
 
 
+@dataclass
+class WrongBackslash(MalException):
+    inside: Token
+    index: int
+
+
 @v_args(inline=True)
 class TransformLisP(Transformer):
     @staticmethod
@@ -118,9 +126,26 @@ class TransformLisP(Transformer):
 
     @staticmethod
     def STRING(token: Token) -> String:
-        # TODO: Transform "\\" in "\" , "\n" in linebreak, "\"" in '"'
-        # NOTE: a '\' followed by nothing else is discarted (see others mal implementations)
-        return String(token.value[1:-1])
+        text = token.value[1:-1]
+        acc = []
+        i = 0
+        while i < len(text):
+            if text[i] == "\\":
+                if (i + 1) < len(text):
+                    if text[i + 1] == "n":
+                        acc.append("\n")
+                    elif text[i + 1] == "\\":
+                        acc.append("\\")
+                    elif text[i + 1] == '"':
+                        acc.append('"')
+                    i += 2
+                else:
+                    raise WrongBackslash(token, i + 1)
+            else:
+                acc.append(text[i])
+                i += 1
+
+        return String("".join(acc))
 
     @staticmethod
     def UNBALANCED_STRING(token: Token) -> String:
