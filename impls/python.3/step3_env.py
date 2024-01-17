@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from parser import TransformLisP, grammar
-from typing import MutableMapping
 
 from core import get_namespace
-from env import Environment, SymbolNotFound
 from lark import Lark, UnexpectedInput, UnexpectedToken
 from lark.exceptions import VisitError
-from mal_types import (ExpressionT, FalseV, Function, HashMap, Keyword, List,
+from mal_types import (Environment, ExpressionT, FalseV, Function,
+                       FunctionDefinition, HashMap, Keyword, List,
                        MalException, Nil, NonFunctionFormAtFirstListITem,
                        Number, Pretty, String, Symbol, TrueV, UnbalancedString,
                        Vector, Visitor)
@@ -136,6 +135,9 @@ class Evaluator(Visitor[ExpressionT]):
             return h
 
     def visit_function(self, f: Function) -> ExpressionT:
+        return f
+
+    def visit_function_definition(self, f: FunctionDefinition) -> ExpressionT:
         return f
 
 

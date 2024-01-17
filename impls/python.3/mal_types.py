@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, TypeVar, Union
+from typing import Callable, Generic, MutableMapping, Optional, TypeVar, Union
 
 T = TypeVar("T")
 
@@ -18,6 +18,7 @@ ExpressionT = Union[
     "Keyword",
     "HashMap",
     "Function",
+    "FunctionDefinition",
 ]
 
 
@@ -88,6 +89,10 @@ class Visitor(Generic[T]):
 
     @abstractmethod
     def visit_function(self, v: Function) -> T:
+        pass
+
+    @abstractmethod
+    def visit_function_definition(self, v: FunctionDefinition) -> T:
         pass
 
 
@@ -194,6 +199,17 @@ class Function(Expression):
         return visitor.visit_function(self)
 
 
+@dataclass
+class FunctionDefinition(Expression):
+    params: list[Symbol]
+    body: ExpressionT
+    env: Environment
+    closure: Function
+
+    def visit(self, visitor: Visitor[T]) -> T:
+        return visitor.visit_function_definition(self)
+
+
 class Pretty(Visitor[str]):
     print_readably: bool
 
@@ -240,3 +256,70 @@ class Pretty(Visitor[str]):
 
     def visit_function(self, fun: Function) -> str:
         return repr(fun)
+
+    def visit_function_definition(self, fun: FunctionDefinition) -> str:
+        return repr(fun)
+
+
+@dataclass
+class Environment:
+    data: MutableMapping[str, ExpressionT]
+    outer: Optional["Environment"]
+
+    def __init__(
+        self,
+        outer: Optional["Environment"],
+        binds: Optional[list[Symbol]] = None,
+        expressions: Optional[list[ExpressionT]] = None,
+    ) -> None:
+        self.data = dict()
+        self.outer = outer
+
+        if binds is None:
+            if expressions is not None:
+                raise WrongNumberOfArguments(binds, expressions)
+            return None
+
+        if expressions is None:
+            raise WrongNumberOfArguments(binds, expressions)
+
+        for i in range(0, len(binds)):
+            if binds[i].symbol == "&":
+                self.set(binds[i + 1], List(expressions[i:]))
+                return None
+            else:
+                self.set(binds[i], expressions[i])
+
+    def set(self, symbol: Symbol, value: ExpressionT) -> ExpressionT:
+        self.data.__setitem__(symbol.symbol, value)
+        return value
+
+    def find(self, symbol: Symbol) -> Optional[ExpressionT]:
+        try:
+            result = self.data.__getitem__(symbol.symbol)
+        except KeyError:
+            if self.outer is None:
+                return None
+            return self.outer.find(symbol)
+        return result
+
+    def get(self, symbol: Symbol) -> ExpressionT:
+        result = self.find(symbol)
+        if result is None:
+            raise SymbolNotFound(symbol, self)
+        return result
+
+
+@dataclass
+class SymbolNotFound(MalException):
+    symbol: Symbol
+    hash_map: Environment
+
+    def __str__(self):
+        return f"'{self.symbol.symbol}' not found in the environment: {self.hash_map}"
+
+
+@dataclass
+class WrongNumberOfArguments(MalException):
+    symbols: Optional[list[Symbol]]
+    arguments: Optional[list[ExpressionT]]
