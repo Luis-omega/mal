@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 from typing import Union
 
-from lark import Token, Transformer, v_args
+from lark import (Lark, Token, Transformer, UnexpectedInput, UnexpectedToken,
+                  v_args)
+from lark.exceptions import VisitError
 from mal_types import (ExpressionT, FalseV, HashMap, Keyword, List,
                        MalException, Nil, Number, String, Symbol, TrueV,
-                       UnbalancedString, Vector)
+                       Vector)
 
 grammar = """
 
@@ -93,9 +95,19 @@ expression : atom
 
 
 @dataclass
+class UnbalancedString(MalException):
+    token: Token
+
+
+@dataclass
 class WrongBackslash(MalException):
     inside: Token
     index: int
+
+
+@dataclass
+class ParsingError(MalException):
+    msg: str
 
 
 @v_args(inline=True)
@@ -149,7 +161,7 @@ class TransformLisP(Transformer):
 
     @staticmethod
     def UNBALANCED_STRING(token: Token) -> String:
-        raise UnbalancedString()
+        raise UnbalancedString(token)
 
     @staticmethod
     def atom(value: ExpressionT) -> ExpressionT:
@@ -232,3 +244,41 @@ class TransformLisP(Transformer):
     @staticmethod
     def expression(exp: ExpressionT) -> ExpressionT:
         return exp
+
+
+lark = Lark(
+    grammar,
+    debug=True,
+    cache=None,
+    maybe_placeholders=True,
+    keep_all_tokens=True,
+    parser="lalr",
+    lexer="basic",
+    start=["expression"],
+)
+transformer = TransformLisP()
+
+
+def parse_str(text: str) -> ExpressionT | str:
+    # We don't use the transformer inside this call to Lark
+    # since we can raise exceptions from the transformer
+    # and the Visitor class of Lark catch them
+    try:
+        result = lark.parse(text)
+    except UnexpectedInput as e:
+        context = e.get_context(text)
+        if isinstance(e, UnexpectedToken):
+            if e.token.type == "$END":
+                return "Error! unexpected EOF\n\n" + context
+            return str(e) + "\n\n" + context
+        return str(e) + "\n\n" + context
+    try:
+        transformed = transformer.transform(result)
+        return transformed
+    except VisitError as e:
+        origin = e.orig_exc
+        if isinstance(origin, UnbalancedString):
+            return (
+                f"Error! unbalanced string at {origin.token.line}:{origin.token.column}"
+            )
+        return "Error! while transforming the tree after parsing: \n\n" + repr(origin)

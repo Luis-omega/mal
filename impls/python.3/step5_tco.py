@@ -2,33 +2,17 @@ from __future__ import annotations
 
 import readline
 from dataclasses import dataclass
-from parser import TransformLisP, grammar
+from parser import parse_str
 
 from core import get_namespace
-from lark import Lark, UnexpectedInput, UnexpectedToken
-from lark.exceptions import VisitError
 from mal_types import (Environment, ExpressionT, FalseV, Function,
                        FunctionDefinition, HashMap, Keyword, List,
                        MalException, Nil, NonFunctionFormAtFirstListITem,
-                       Number, Pretty, String, Symbol, TrueV, UnbalancedString,
-                       Vector)
+                       Number, Pretty, String, Symbol, TrueV, Vector)
 
 
-def read(
-    parser: Lark, transformer: TransformLisP, text: str
-) -> ExpressionT | UnexpectedInput | MalException:
-    try:
-        result = parser.parse(text)
-    except UnexpectedInput as e:
-        return e
-    try:
-        transformed = transformer.transform(result)
-        return transformed
-    except VisitError as e:
-        if e.rule == "UNBALANCED_STRING":
-            return UnbalancedString()
-        print(repr(e))
-        return MalException()
+def read(text: str) -> ExpressionT | str:
+    return parse_str(text)
 
 
 @dataclass
@@ -267,19 +251,10 @@ def print_mal(exp: ExpressionT) -> str:
     return exp.visit(Pretty())
 
 
-def rep(parser: Lark, transformer: TransformLisP, text: str, env: Environment) -> str:
-    r = read(parser, transformer, text)
-    if isinstance(r, UnexpectedInput):
-        if isinstance(r, UnexpectedToken):
-            print("unexpected token")
-            if r.token.type == "$END":
-                return "EOF"
-            return str(r)
-        return str(type(r)) + str(r)
-    elif isinstance(r, UnbalancedString):
-        return "unbalanced"
-    elif isinstance(r, MalException):
-        return "mal exception: " + str(r)
+def rep(text: str, env: Environment) -> str:
+    r = read(text)
+    if isinstance(r, str):
+        return r
     try:
         e = eval_mal(r, env)
     except MalException as ex:
@@ -289,25 +264,11 @@ def rep(parser: Lark, transformer: TransformLisP, text: str, env: Environment) -
 
 
 def main() -> None:
-    # We don't use the transformer inside this call to Lark
-    # since we can raise exceptions from the transformer
-    # and the Visitor class of Lark catch them
-    parser = Lark(
-        grammar,
-        debug=True,
-        cache=None,
-        maybe_placeholders=True,
-        keep_all_tokens=True,
-        parser="lalr",
-        lexer="basic",
-        start=["expression"],
-    )
-    transformer = TransformLisP()
     default_env_dict = get_namespace()
     default_env: Environment = Environment(None)
     default_env.data = default_env_dict
     # inject the not function, this is required by the tutorial XD
-    rep(parser, transformer, "(def! not (fn* (a) (if a false true)))", default_env)
+    rep("(def! not (fn* (a) (if a false true)))", default_env)
     while True:
         try:
             text = input("user> ")
@@ -316,7 +277,7 @@ def main() -> None:
         except KeyboardInterrupt:
             print()
             continue
-        result = rep(parser, transformer, text, default_env)
+        result = rep(text, default_env)
         print(result)
 
 

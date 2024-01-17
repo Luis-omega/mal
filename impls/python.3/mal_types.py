@@ -26,10 +26,6 @@ class MalException(Exception):
     pass
 
 
-class UnbalancedString(MalException):
-    pass
-
-
 @dataclass
 class NonFunctionFormAtFirstListITem(MalException):
     exp: ExpressionT
