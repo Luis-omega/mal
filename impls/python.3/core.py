@@ -140,11 +140,21 @@ def println(args: list[ExpressionT]) -> Nil:
 
 def get_namespace() -> MutableMapping[str, ExpressionT]:
     return {
-        "+": Function(lambda t: Number(t[0].value + t[1].value)),
-        "-": Function(lambda t: Number(t[0].value - t[1].value)),
-        "/": Function(lambda t: Number(t[0].value / t[1].value)),
-        "*": Function(lambda t: Number(t[0].value * t[1].value)),
-        "%": Function(lambda t: Number(t[0].value % t[1].value)),
+        "+": Function(
+            lambda t: Number(assert_number(t[0]).value + assert_number(t[1]).value)
+        ),
+        "-": Function(
+            lambda t: Number(assert_number(t[0]).value - assert_number(t[1]).value)
+        ),
+        "/": Function(
+            lambda t: Number(assert_number(t[0]).value // assert_number(t[1]).value)
+        ),
+        "*": Function(
+            lambda t: Number(assert_number(t[0]).value * assert_number(t[1]).value)
+        ),
+        "%": Function(
+            lambda t: Number(assert_number(t[0]).value % assert_number(t[1]).value)
+        ),
         "prn": Function(prn),
         "list": Function(_list),
         "list?": Function(is_list),

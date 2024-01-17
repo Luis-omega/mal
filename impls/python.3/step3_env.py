@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from parser import TransformLisP, grammar
 from typing import MutableMapping
 
+from core import get_namespace
 from env import Environment, SymbolNotFound
 from lark import Lark, UnexpectedInput, UnexpectedToken
 from lark.exceptions import VisitError
@@ -134,7 +135,7 @@ class Evaluator(Visitor[ExpressionT]):
         else:
             return h
 
-    def visit_primitive_function(self, f: Function) -> ExpressionT:
+    def visit_function(self, f: Function) -> ExpressionT:
         return f
 
 
@@ -184,13 +185,7 @@ def main() -> None:
         start=["expression"],
     )
     transformer = TransformLisP()
-    default_env_dict: MutableMapping[str, ExpressionT] = {
-        "+": Function(lambda t: Number(t[0].value + t[1].value)),
-        "-": Function(lambda t: Number(t[0].value - t[1].value)),
-        "/": Function(lambda t: Number(t[0].value / t[1].value)),
-        "*": Function(lambda t: Number(t[0].value * t[1].value)),
-        "%": Function(lambda t: Number(t[0].value % t[1].value)),
-    }
+    default_env_dict = get_namespace()
     default_env: Environment = Environment(None)
     default_env.data = default_env_dict
     default_evaluator: Evaluator = Evaluator(default_env)
