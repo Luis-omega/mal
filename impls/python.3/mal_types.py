@@ -19,6 +19,7 @@ ExpressionT = Union[
     "HashMap",
     "Function",
     "FunctionDefinition",
+    "Atom",
 ]
 
 
@@ -42,7 +43,7 @@ class NonFunctionFormAtFirstListITem(MalException):
         )
 
 
-class Visitor(Generic[T]):
+class Visitor(ABC, Generic[T]):
     @abstractmethod
     def visit_symbol(self, s: Symbol) -> T:
         pass
@@ -89,6 +90,10 @@ class Visitor(Generic[T]):
 
     @abstractmethod
     def visit_function_definition(self, v: FunctionDefinition) -> T:
+        pass
+
+    @abstractmethod
+    def visit_atom(self, v: Atom) -> T:
         pass
 
 
@@ -206,6 +211,14 @@ class FunctionDefinition(Expression):
         return visitor.visit_function_definition(self)
 
 
+@dataclass
+class Atom(Expression):
+    value: ExpressionT
+
+    def visit(self, visitor: Visitor[T]) -> T:
+        return visitor.visit_atom(self)
+
+
 class Pretty(Visitor[str]):
     print_readably: bool
 
@@ -255,6 +268,9 @@ class Pretty(Visitor[str]):
 
     def visit_function_definition(self, fun: FunctionDefinition) -> str:
         return repr(fun)
+
+    def visit_atom(self, a: Atom) -> str:
+        return f"(Atom {a.value.visit(self)})"
 
 
 @dataclass

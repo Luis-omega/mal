@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from parser import parse_str
 
 from core import get_namespace
-from mal_types import (Environment, ExpressionT, FalseV, Function,
+from mal_types import (Atom, Environment, ExpressionT, FalseV, Function,
                        FunctionDefinition, HashMap, Keyword, List,
                        MalException, Nil, NonFunctionFormAtFirstListITem,
                        Number, Pretty, String, Symbol, TrueV, Vector, Visitor)
@@ -235,6 +235,9 @@ class Evaluator(Visitor[ExpressionT]):
 
     def visit_function_definition(self, f: FunctionDefinition) -> ExpressionT:
         return f
+
+    def visit_atom(self, a: Atom) -> ExpressionT:
+        return a
 
 
 def eval_mal(exp: ExpressionT, evaluator: Evaluator) -> ExpressionT:
