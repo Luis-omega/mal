@@ -270,7 +270,9 @@ class Pretty(Visitor[str]):
         return repr(fun)
 
     def visit_atom(self, a: Atom) -> str:
-        return f"(Atom {a.value.visit(self)})"
+        if a != a.value:
+            return f"(atom {a.value.visit(self)})"
+        return repr(a)
 
 
 @dataclass

@@ -1,8 +1,12 @@
 from dataclasses import dataclass
-from typing import MutableMapping
+from parser import parse_str
+from typing import MutableMapping, TypeVar
 
-from mal_types import (ExpressionT, FalseV, Function, List, MalException, Nil,
-                       Number, Pretty, String, TrueV, Vector)
+from mal_types import (Atom, Expression, ExpressionT, FalseV, Function,
+                       FunctionDefinition, List, MalException, Nil, Number,
+                       Pretty, String, TrueV, Vector)
+
+T = TypeVar("T", bound=Expression)
 
 
 @dataclass
@@ -12,7 +16,9 @@ class UnexpectedArgument(MalException):
 
     def __str__(self):
         p = Pretty()
-        return f"Unexpected argument {self.argument.visit(p)}, expected " + self.msg
+        return (
+            f"Error! Unexpected argument {self.argument.visit(p)}, expected " + self.msg
+        )
 
 
 @dataclass
@@ -24,16 +30,55 @@ class UnexpectedNumberOfArguments(MalException):
         return f"Error! bad number of arguments at {self.name} expected {self.expected}"
 
 
-def assert_number(x: ExpressionT) -> Number:
-    if not isinstance(x, Number):
-        raise UnexpectedArgument(x, " a number")
+@dataclass
+class ParsingError(MalException):
+    msg: str
+
+    def __str__(self):
+        return self.msg
+
+
+@dataclass
+class MalIOError(MalException):
+    e: IOError
+
+
+class CarOnEmptyList(MalException):
+    def __str__(self):
+        return "Error! attempt to access head element of an empty list"
+
+
+class CdrOnEmptyList(MalException):
+    def __str__(self):
+        return "Error! attempt to access tail of an empty list"
+
+
+def assert_is_of_class(x: ExpressionT, _class: type[T]) -> T:
+    if not isinstance(x, _class):
+        raise UnexpectedArgument(x, " a " + _class.__name__)
     return x
+
+
+def assert_number(x: ExpressionT) -> Number:
+    return assert_is_of_class(x, Number)
+
+
+def assert_list(x: ExpressionT) -> List:
+    return assert_is_of_class(x, List)
 
 
 def assert_sequence(x: ExpressionT) -> List | Vector:
-    if not isinstance(x, List) and not isinstance(x, Vector):
-        raise UnexpectedArgument(x, " a list")
-    return x
+    if isinstance(x, List) or isinstance(x, Vector):
+        return x
+    raise UnexpectedArgument(x, " a sequence")
+
+
+def assert_string(x: ExpressionT) -> String:
+    return assert_is_of_class(x, String)
+
+
+def assert_atom(x: ExpressionT) -> Atom:
+    return assert_is_of_class(x, Atom)
 
 
 def assert_argument_number(x: list[ExpressionT], n: int, name: str) -> None:
@@ -138,6 +183,83 @@ def println(args: list[ExpressionT]) -> Nil:
     return Nil()
 
 
+def car(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 1, "car")
+    ls = assert_list(x[0])
+    if ls.value:
+        return ls.value[0]
+    raise CarOnEmptyList()
+
+
+def cdr(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 1, "cdr")
+    ls = assert_list(x[0])
+    if len(ls.value) >= 1:
+        return List(ls.value[1:])
+    raise CdrOnEmptyList()
+
+
+def read_string(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 1, "read-string")
+    s = assert_string(x[0])
+    result = parse_str(s.value)
+    if isinstance(result, str):
+        raise ParsingError(result)
+    return result
+
+
+def slurp(x: list[ExpressionT]) -> String:
+    assert_argument_number(x, 1, "slurp")
+    s = assert_string(x[0])
+    try:
+        with open(s.value, "r") as f:
+            content = f.read()
+            return String(content)
+    except IOError as e:
+        raise MalIOError(e)
+
+
+def atom(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 1, "atom")
+    return Atom(x[0])
+
+
+def is_atom(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 1, "atom")
+    return bool_to_mal_bool(isinstance(x[0], Atom))
+
+
+def deref(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 1, "deref")
+    a = assert_atom(x[0])
+    return a.value
+
+
+def reset(x: list[ExpressionT]) -> ExpressionT:
+    assert_argument_number(x, 2, "reset")
+    a = assert_atom(x[0])
+    v = x[1]
+    a.value = v
+    return v
+
+
+def swap(x: list[ExpressionT]) -> ExpressionT:
+    if len(x) < 2:
+        # TODO: replace this with a more acurate exception
+        raise UnexpectedNumberOfArguments("swap", 2)
+    a = assert_atom(x[0])
+    args = x[2:]
+    f = x[1]
+
+    if isinstance(f, Function):
+        a.value = f.value([a.value] + args)
+        return a.value
+    if isinstance(f, FunctionDefinition):
+        a.value = f.closure.value([a.value] + args)
+        return a.value
+    raise UnexpectedArgument(x[1], "a function")
+
+
 def get_namespace() -> MutableMapping[str, ExpressionT]:
     return {
         "+": Function(
@@ -168,4 +290,13 @@ def get_namespace() -> MutableMapping[str, ExpressionT]:
         "pr-str": Function(pr_str),
         "str": Function(mal_str),
         "println": Function(println),
+        "car": Function(car),
+        "cdr": Function(cdr),
+        "read-string": Function(read_string),
+        "slurp": Function(slurp),
+        "atom": Function(atom),
+        "atom?": Function(is_atom),
+        "deref": Function(deref),
+        "reset!": Function(reset),
+        "swap!": Function(swap),
     }
